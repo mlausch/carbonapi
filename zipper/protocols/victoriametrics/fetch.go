@@ -163,7 +163,8 @@ func (c *VictoriaMetricsGroup) Fetch(ctx context.Context, request *protov3.Multi
 					realStart = int64(m.Values[0].Timestamp)
 					realStop = int64(m.Values[len(m.Values)-1].Timestamp)
 				}
-				alignedValues := helpers.AlignValues(realStart, realStop, stepLocal, m.Values)
+				// alignedValues := helpers.AlignValues(realStart, realStop, stepLocal, m.Values)
+				alignedValues, mStep := helpers.AlignValuesAndGatherStep(realStart, realStop, stepLocal, m.Values)
 
 				r.Metrics = append(r.Metrics, protov3.FetchResponse{
 					Name:              helpers.PromMetricToGraphite(m.Metric),
@@ -171,7 +172,7 @@ func (c *VictoriaMetricsGroup) Fetch(ctx context.Context, request *protov3.Multi
 					ConsolidationFunc: "Average",
 					StartTime:         realStart,
 					StopTime:          realStop,
-					StepTime:          stepLocal,
+					StepTime:          mStep,
 					Values:            alignedValues,
 					XFilesFactor:      0.0,
 					RequestStartTime:  target.start,

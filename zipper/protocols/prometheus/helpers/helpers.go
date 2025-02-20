@@ -82,6 +82,45 @@ func AlignValues(startTime, stopTime, step int64, promValues []types.Value) []fl
 	return resValues
 }
 
+func AlignValuesAndGatherStep(startTime, stopTime, step int64, promValues []types.Value) ([]float64, int64) {
+	var (
+		mStep int64
+	)
+	if len(promValues) > 1 {
+		mStep = int64(promValues[1].Timestamp - promValues[0].Timestamp)
+	} else {
+		mStep = step
+	}
+
+	resValues := make([]float64, (stopTime-startTime)/mStep+1)
+	i := 0
+	avg := 0.0
+	avgc := 0
+	nextTimestamp := startTime + mStep
+
+	for _, val := range promValues {
+		avg = avg + val.Value
+		avgc = avgc + 1
+		if int64(val.Timestamp) >= nextTimestamp {
+			resValues[i] = avg / float64(avgc)
+			avg = 0.0
+			avgc = 0
+			i = i + 1
+			nextTimestamp = startTime + mStep*int64(i)
+		}
+		// in case we have gaps greater than stepsize we fill the point with nan values
+		for int64(val.Timestamp) >= nextTimestamp {
+			resValues[i] = math.NaN()
+			i = i + 1
+			nextTimestamp = startTime + mStep*int64(i)
+		}
+	}
+
+	return resValues, mStep
+
+}
+
+
 // AdjustStep adjusts step keeping in mind default/configurable limit of maximum points per query
 // Steps sequence is aligned with Grafana. Step progresses in the following order:
 // minimal configured step if not default => 20 => 30 => 60 => 120 => 300 => 600 => 900 => 1200 => 1800 => 3600 => 7200 => 10800 => 21600 => 43200 => 86400
